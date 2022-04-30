@@ -1,21 +1,34 @@
 #!/usr/bin/env node
-import 'source-map-support/register';
-import * as cdk from 'aws-cdk-lib';
-import { CloudLabStack } from '../lib/cloud-lab-stack';
+import "source-map-support/register";
+import * as cdk from "aws-cdk-lib";
+import { VPCStack } from "../lib/VPCStack";
+import { EC2Stack } from "../lib/EC2Stack";
+import { HostedZoneStack } from "../lib/HostedZoneStack";
+import {} from "aws-cdk-lib/aws-route53-targets";
+import { RecordTarget } from "aws-cdk-lib/aws-route53";
+
+const ENV = { account: "754736151010", region: "eu-west-1" };
+const ZONE_ID = "Z042311036FBKI83JWQWD";
+const ZONE_NAME = "goatcher.net";
 
 const app = new cdk.App();
-new CloudLabStack(app, 'CloudLabStack', {
-  /* If you don't specify 'env', this stack will be environment-agnostic.
-   * Account/Region-dependent features and context lookups will not work,
-   * but a single synthesized template can be deployed anywhere. */
-
-  /* Uncomment the next line to specialize this stack for the AWS Account
-   * and Region that are implied by the current CLI configuration. */
-  // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
-
-  /* Uncomment the next line if you know exactly what Account and Region you
-   * want to deploy the stack to. */
-  // env: { account: '123456789012', region: 'us-east-1' },
-
-  /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
+const vpcStack = new VPCStack(app, "cloud-lab-vpc-stack", {
+  stackName: "cloud-lab-vpc-stack",
+  env: ENV,
 });
+
+const ec2Stack = new EC2Stack(app, "cloud-lab-ec2-stack", {
+  vpc: vpcStack.vpc,
+  env: ENV,
+});
+
+const hostedZoneStack = new HostedZoneStack(
+  app,
+  `cloud-lab-hosted-zone-stack`,
+  { zoneId: ZONE_ID, zoneName: ZONE_NAME, env: ENV }
+);
+
+hostedZoneStack.createARecord(
+  "nextcloud.goatcher.net",
+  RecordTarget.fromIpAddresses(ec2Stack.ec2.instancePublicIp)
+);
